@@ -3,6 +3,7 @@ package vuforia
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -75,6 +76,10 @@ type PostTargetResponse struct {
 }
 
 func (c *client) PostTarget(input *PostTargetRequest) (*PostTargetResponse, error) {
+	if input == nil {
+		panic("input is <nil>")
+	}
+
 	body, err := json.Marshal(input)
 	if err != nil {
 		return nil, err
@@ -126,7 +131,7 @@ type GetTargetResponse struct {
 		// Name of the target, unique within a database
 		Name string `json:"name"`
 		// Width of the target in scene unit
-		Width string `json:"width"`
+		Width float64 `json:"width"`
 		// TrackingRating is the rating of the target recognition image for tracking purposes
 		TrackingRating int `json:"tracking_rating"`
 	} `json:"target_record"`
@@ -134,6 +139,13 @@ type GetTargetResponse struct {
 
 // https://library.vuforia.com/articles/Solution/How-To-Use-the-Vuforia-Web-Services-API.html#How-To-Retrieve-a-Target-Record
 func (c *client) GetTarget(input *GetTargetRequest) (*GetTargetResponse, error) {
+	if input == nil {
+		panic("input is <nil>")
+	}
+	if input.TargetId == "" {
+		return nil, errors.New("TargetId must be provided")
+	}
+
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%s/targets/%s", vuforiaUrl, input.TargetId), nil)
 	if err != nil {
 		return nil, err
@@ -166,6 +178,7 @@ type UpdateTargetRequest struct {
 	// Width of the target in scene unit (Optional)
 	Width *float64 `json:"width,omitempty"`
 	// Image is the base64 encoded binary recognition image data (Optional)
+	// https://library.vuforia.com/features/images/image-targets.html
 	Image *string `json:"image,omitempty"`
 	// Active Iidicates whether or not the target is active for query (Optional)
 	Active *bool `json:"active_flag,omitempty"`
@@ -182,6 +195,13 @@ type UpdateTargetResponse struct {
 }
 
 func (c *client) UpdateTarget(input *UpdateTargetRequest) (*UpdateTargetResponse, error) {
+	if input == nil {
+		panic("input is <nil>")
+	}
+	if input.TargetId == "" {
+		return nil, errors.New("TargetId must be provided")
+	}
+
 	body, err := json.Marshal(input)
 	if err != nil {
 		return nil, err
@@ -226,6 +246,13 @@ type DeleteTargetResponse struct {
 
 // https://library.vuforia.com/articles/Solution/How-To-Use-the-Vuforia-Web-Services-API.html#How-To-Delete-a-Target
 func (c *client) DeleteTarget(input *DeleteTargetRequest) (*DeleteTargetResponse, error) {
+	if input == nil {
+		panic("input is <nil>")
+	}
+	if input.TargetId == "" {
+		return nil, errors.New("TargetId must be provided")
+	}
+
 	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("https://%s/targets/%s", vuforiaUrl, input.TargetId), nil)
 	if err != nil {
 		return nil, err
@@ -283,6 +310,13 @@ type TargetSummaryResponse struct {
 
 // https://library.vuforia.com/articles/Solution/How-To-Use-the-Vuforia-Web-Services-API.html#How-To-Retrieve-a-Target-Summary-Report
 func (c *client) TargetSummary(input *TargetSummaryRequest) (*TargetSummaryResponse, error) {
+	if input == nil {
+		panic("input is <nil>")
+	}
+	if input.TargetId == "" {
+		return nil, errors.New("TargetId must be provided")
+	}
+	
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%s/summary/%s", vuforiaUrl, input.TargetId), nil)
 	if err != nil {
 		return nil, err
