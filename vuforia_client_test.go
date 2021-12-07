@@ -1,6 +1,7 @@
 package vuforia_test
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
@@ -35,7 +36,7 @@ func TestTargetCRUD(t *testing.T) {
 			width := float64(2)
 			active := true
 			metadata := base64.RawStdEncoding.EncodeToString([]byte("License: Free to use under the Unsplash License"))
-			resp, err := client.PostTarget(&vuforia.PostTargetRequest{
+			resp, err := client.PostTarget(context.Background(), &vuforia.PostTargetRequest{
 				Name:     name,
 				Width:    width,
 				Image:    base64.RawStdEncoding.EncodeToString(artWork),
@@ -51,7 +52,7 @@ func TestTargetCRUD(t *testing.T) {
 
 			success := false
 			for !success {
-				getResp, err := client.GetTarget(&vuforia.GetTargetRequest{
+				getResp, err := client.GetTarget(context.Background(), &vuforia.GetTargetRequest{
 					TargetId: resp.TargetId,
 				})
 				require.NoError(t, err)
@@ -74,7 +75,7 @@ func TestTargetCRUD(t *testing.T) {
 			width2 := float64(3)
 			image2 := base64.RawStdEncoding.EncodeToString(artWork)
 			metadata2 := base64.RawStdEncoding.EncodeToString([]byte("New License: Free to use under the Unsplash License"))
-			updateResp, err := client.UpdateTarget(&vuforia.UpdateTargetRequest{
+			updateResp, err := client.UpdateTarget(context.Background(), &vuforia.UpdateTargetRequest{
 				TargetId: targetId,
 				Name:     &name2,
 				Width:    &width2,
@@ -87,7 +88,7 @@ func TestTargetCRUD(t *testing.T) {
 
 			success := false
 			for !success {
-				getResp, err := client.GetTarget(&vuforia.GetTargetRequest{
+				getResp, err := client.GetTarget(context.Background(), &vuforia.GetTargetRequest{
 					TargetId: targetId,
 				})
 				require.NoError(t, err)
@@ -106,7 +107,7 @@ func TestTargetCRUD(t *testing.T) {
 		})
 
 		t.Run("Summary", func(t *testing.T) {
-			summaryResp, err := client.TargetSummary(&vuforia.TargetSummaryRequest{
+			summaryResp, err := client.TargetSummary(context.Background(), &vuforia.TargetSummaryRequest{
 				TargetId: targetId,
 			})
 			require.NoError(t, err)
@@ -124,18 +125,22 @@ func TestTargetCRUD(t *testing.T) {
 		})
 
 		t.Run("Delete & Get", func(t *testing.T) {
-			deleteResp, err := client.DeleteTarget(&vuforia.DeleteTargetRequest{
+			deleteResp, err := client.DeleteTarget(context.Background(), &vuforia.DeleteTargetRequest{
 				TargetId: targetId,
 			})
 			require.NoError(t, err)
 			require.Equal(t, "Success", deleteResp.ResultCode)
 			require.NotEmpty(t, deleteResp.TransactionId)
 
-			getResp, err := client.GetTarget(&vuforia.GetTargetRequest{
+			getResp, err := client.GetTarget(context.Background(), &vuforia.GetTargetRequest{
 				TargetId: targetId,
 			})
-			require.NoError(t, err)
-			require.Equal(t, "UnknownTarget", getResp.ResultCode)
+
+			var ae vuforia.APIError
+			require.ErrorAs(t, err, &ae)
+			require.Equal(t, "UnknownTarget", ae.ResultCode)
+
+			require.Nil(t, getResp)
 		})
 	})
 }
