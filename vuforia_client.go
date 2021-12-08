@@ -2,6 +2,7 @@ package vuforia
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,17 +15,17 @@ const vuforiaUrl = "vws.vuforia.com"
 
 type Client interface {
 	// PostTarget adds a new target
-	PostTarget(*PostTargetRequest) (*PostTargetResponse, error)
+	PostTarget(context.Context, *PostTargetRequest) (*PostTargetResponse, error)
 	// GetTarget retrieves the target
-	GetTarget(*GetTargetRequest) (*GetTargetResponse, error)
+	GetTarget(context.Context, *GetTargetRequest) (*GetTargetResponse, error)
 	// UpdateTarget updates the target
-	UpdateTarget(*UpdateTargetRequest) (*UpdateTargetResponse, error)
+	UpdateTarget(context.Context, *UpdateTargetRequest) (*UpdateTargetResponse, error)
 	// DeleteTarget deletes the target
-	DeleteTarget(*DeleteTargetRequest) (*DeleteTargetResponse, error)
+	DeleteTarget(context.Context, *DeleteTargetRequest) (*DeleteTargetResponse, error)
 	// TargetSummary retrieves summary of the target
-	TargetSummary(*TargetSummaryRequest) (*TargetSummaryResponse, error)
+	TargetSummary(context.Context, *TargetSummaryRequest) (*TargetSummaryResponse, error)
 	// DatabaseSummary retrieves the summary of the database
-	DatabaseSummary() (*DatabaseSummaryResponse, error)
+	DatabaseSummary(context.Context) (*DatabaseSummaryResponse, error)
 }
 
 type ClientConfig struct {
@@ -75,7 +76,7 @@ type PostTargetResponse struct {
 	ResultCode string `json:"result_code"`
 }
 
-func (c *client) PostTarget(input *PostTargetRequest) (*PostTargetResponse, error) {
+func (c *client) PostTarget(ctx context.Context, input *PostTargetRequest) (*PostTargetResponse, error) {
 	if input == nil {
 		panic("input is <nil>")
 	}
@@ -85,7 +86,7 @@ func (c *client) PostTarget(input *PostTargetRequest) (*PostTargetResponse, erro
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s/targets", vuforiaUrl), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("https://%s/targets", vuforiaUrl), bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -94,11 +95,15 @@ func (c *client) PostTarget(input *PostTargetRequest) (*PostTargetResponse, erro
 		return nil, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.cfg.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer safeClose(resp)
+
+	if err := checkError(resp); err != nil {
+		return nil, err
+	}
 
 	var v PostTargetResponse
 	err = json.NewDecoder(resp.Body).Decode(&v)
@@ -138,7 +143,7 @@ type GetTargetResponse struct {
 }
 
 // https://library.vuforia.com/articles/Solution/How-To-Use-the-Vuforia-Web-Services-API.html#How-To-Retrieve-a-Target-Record
-func (c *client) GetTarget(input *GetTargetRequest) (*GetTargetResponse, error) {
+func (c *client) GetTarget(ctx context.Context, input *GetTargetRequest) (*GetTargetResponse, error) {
 	if input == nil {
 		panic("input is <nil>")
 	}
@@ -146,7 +151,7 @@ func (c *client) GetTarget(input *GetTargetRequest) (*GetTargetResponse, error) 
 		return nil, errors.New("TargetId must be provided")
 	}
 
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%s/targets/%s", vuforiaUrl, input.TargetId), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("https://%s/targets/%s", vuforiaUrl, input.TargetId), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -160,6 +165,10 @@ func (c *client) GetTarget(input *GetTargetRequest) (*GetTargetResponse, error) 
 		return nil, err
 	}
 	defer safeClose(resp)
+
+	if err := checkError(resp); err != nil {
+		return nil, err
+	}
 
 	var v GetTargetResponse
 	err = json.NewDecoder(resp.Body).Decode(&v)
@@ -194,7 +203,7 @@ type UpdateTargetResponse struct {
 	ResultCode string `json:"result_code"`
 }
 
-func (c *client) UpdateTarget(input *UpdateTargetRequest) (*UpdateTargetResponse, error) {
+func (c *client) UpdateTarget(ctx context.Context, input *UpdateTargetRequest) (*UpdateTargetResponse, error) {
 	if input == nil {
 		panic("input is <nil>")
 	}
@@ -207,7 +216,7 @@ func (c *client) UpdateTarget(input *UpdateTargetRequest) (*UpdateTargetResponse
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("https://%s/targets/%s", vuforiaUrl, input.TargetId), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, fmt.Sprintf("https://%s/targets/%s", vuforiaUrl, input.TargetId), bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -216,11 +225,15 @@ func (c *client) UpdateTarget(input *UpdateTargetRequest) (*UpdateTargetResponse
 		return nil, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.cfg.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer safeClose(resp)
+
+	if err := checkError(resp); err != nil {
+		return nil, err
+	}
 
 	var v UpdateTargetResponse
 	err = json.NewDecoder(resp.Body).Decode(&v)
@@ -245,7 +258,7 @@ type DeleteTargetResponse struct {
 }
 
 // https://library.vuforia.com/articles/Solution/How-To-Use-the-Vuforia-Web-Services-API.html#How-To-Delete-a-Target
-func (c *client) DeleteTarget(input *DeleteTargetRequest) (*DeleteTargetResponse, error) {
+func (c *client) DeleteTarget(ctx context.Context, input *DeleteTargetRequest) (*DeleteTargetResponse, error) {
 	if input == nil {
 		panic("input is <nil>")
 	}
@@ -253,7 +266,7 @@ func (c *client) DeleteTarget(input *DeleteTargetRequest) (*DeleteTargetResponse
 		return nil, errors.New("TargetId must be provided")
 	}
 
-	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("https://%s/targets/%s", vuforiaUrl, input.TargetId), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, fmt.Sprintf("https://%s/targets/%s", vuforiaUrl, input.TargetId), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -267,6 +280,10 @@ func (c *client) DeleteTarget(input *DeleteTargetRequest) (*DeleteTargetResponse
 		return nil, err
 	}
 	defer safeClose(resp)
+
+	if err := checkError(resp); err != nil {
+		return nil, err
+	}
 
 	var v DeleteTargetResponse
 	err = json.NewDecoder(resp.Body).Decode(&v)
@@ -309,15 +326,15 @@ type TargetSummaryResponse struct {
 }
 
 // https://library.vuforia.com/articles/Solution/How-To-Use-the-Vuforia-Web-Services-API.html#How-To-Retrieve-a-Target-Summary-Report
-func (c *client) TargetSummary(input *TargetSummaryRequest) (*TargetSummaryResponse, error) {
+func (c *client) TargetSummary(ctx context.Context, input *TargetSummaryRequest) (*TargetSummaryResponse, error) {
 	if input == nil {
 		panic("input is <nil>")
 	}
 	if input.TargetId == "" {
 		return nil, errors.New("TargetId must be provided")
 	}
-	
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%s/summary/%s", vuforiaUrl, input.TargetId), nil)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("https://%s/summary/%s", vuforiaUrl, input.TargetId), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -331,6 +348,10 @@ func (c *client) TargetSummary(input *TargetSummaryRequest) (*TargetSummaryRespo
 		return nil, err
 	}
 	defer safeClose(resp)
+
+	if err := checkError(resp); err != nil {
+		return nil, err
+	}
 
 	var v TargetSummaryResponse
 	err = json.NewDecoder(resp.Body).Decode(&v)
@@ -358,8 +379,8 @@ type DatabaseSummaryResponse struct {
 }
 
 // https://library.vuforia.com/articles/Solution/How-To-Use-the-Vuforia-Web-Services-API.html#How-To-Get-a-Database-Summary-Report
-func (c *client) DatabaseSummary() (*DatabaseSummaryResponse, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%s/summary", vuforiaUrl), nil)
+func (c *client) DatabaseSummary(ctx context.Context) (*DatabaseSummaryResponse, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("https://%s/summary", vuforiaUrl), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -373,6 +394,10 @@ func (c *client) DatabaseSummary() (*DatabaseSummaryResponse, error) {
 		return nil, err
 	}
 	defer safeClose(resp)
+
+	if err := checkError(resp); err != nil {
+		return nil, err
+	}
 
 	var v DatabaseSummaryResponse
 	err = json.NewDecoder(resp.Body).Decode(&v)
